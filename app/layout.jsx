@@ -30,9 +30,9 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
-        <noscript><style>{'[data-reveal]{opacity:1!important;transform:none!important}'}</style></noscript>
+        <noscript><style>{'[data-reveal]{opacity:1!important;transform:none!important}[data-boot-screen]{display:none!important}'}</style></noscript>
         {children}
       </body>
     </html>

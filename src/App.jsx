@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowDown,
@@ -18,6 +18,57 @@ import DesktopNav from './components/DesktopNav.jsx'
 import { activeTheses, discoveryTopics, projects } from './data/siteContent.js'
 
 const DiscoveryShape = lazy(() => import('./components/DiscoveryShape.jsx'))
+
+function BootScreen({ complete, onGone }) {
+  const [progress, setProgress] = useState(7)
+  const [phase, setPhase] = useState('loading')
+
+  useEffect(() => {
+    if (complete) return undefined
+    const interval = window.setInterval(() => {
+      setProgress((current) => Math.min(92, current + Math.max(1, Math.ceil((94 - current) * 0.075))))
+    }, 110)
+    return () => window.clearInterval(interval)
+  }, [complete])
+
+  useEffect(() => {
+    if (!complete) return undefined
+    setProgress(100)
+    setPhase('complete')
+    const exitTimer = window.setTimeout(() => setPhase('exiting'), 380)
+    const removeTimer = window.setTimeout(onGone, 1150)
+    return () => {
+      window.clearTimeout(exitTimer)
+      window.clearTimeout(removeTimer)
+    }
+  }, [complete, onGone])
+
+  return (
+    <div className={`boot-screen boot-${phase}`} data-boot-screen role="status" aria-label="Loading Tyler Henn">
+      <div className="boot-grid" aria-hidden="true" />
+      <div className="boot-orbit" aria-hidden="true"><i /><i /><i /></div>
+      <div className="boot-meta boot-meta-top" aria-hidden="true">
+        <span>TYLERHENN.NET</span>
+        <span>DISCOVERY SYSTEM / 2026</span>
+      </div>
+      <div className="boot-core" aria-hidden="true">
+        <p><i /> ASSEMBLING THE DISCOVERY LAYER</p>
+        <div className="boot-wordmark">
+          <strong data-word="TYLER">TYLER</strong>
+          <strong data-word="HENN">HENN</strong>
+        </div>
+      </div>
+      <div className="boot-readout" aria-hidden="true">
+        <div>
+          <span>{complete ? 'READY / ENTERING' : 'LOADING / SYSTEMS'}</span>
+          <strong>{String(progress).padStart(3, '0')}</strong>
+        </div>
+        <div className="boot-track"><i style={{ width: `${progress}%` }} /></div>
+      </div>
+      <span className="sr-only">Loading Tyler Henn. The page will open automatically.</span>
+    </div>
+  )
+}
 
 function MagneticLink({ href, children, className = '', external = false }) {
   const ref = useRef(null)
@@ -71,6 +122,7 @@ export function Cursor() {
     let ry = y
     let frame
     const move = (event) => {
+      if (!dot.current || !ring.current) return
       x = event.clientX
       y = event.clientY
       dot.current.style.transform = `translate3d(${x}px, ${y}px, 0)`
@@ -78,6 +130,7 @@ export function Cursor() {
       ring.current.classList.toggle('is-active', Boolean(active))
     }
     const tick = () => {
+      if (!ring.current) return
       rx += (x - rx) * 0.14
       ry += (y - ry) * 0.14
       ring.current.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
@@ -110,6 +163,36 @@ export function ScrollProgress() {
 function App() {
   const [deckOpen, setDeckOpen] = useState(false)
   const [overdrive, setOverdrive] = useState(false)
+  const [documentReady, setDocumentReady] = useState(false)
+  const [sceneReady, setSceneReady] = useState(false)
+  const [bootFallback, setBootFallback] = useState(false)
+  const [bootVisible, setBootVisible] = useState(true)
+  const markSceneReady = useCallback(() => setSceneReady(true), [])
+  const dismissBoot = useCallback(() => setBootVisible(false), [])
+
+  useEffect(() => {
+    let cancelled = false
+    let removeLoadListener = () => {}
+    const pageLoad = document.readyState === 'complete'
+      ? Promise.resolve()
+      : new Promise((resolve) => {
+          const handleLoad = () => resolve()
+          window.addEventListener('load', handleLoad, { once: true })
+          removeLoadListener = () => window.removeEventListener('load', handleLoad)
+        })
+    const fontsLoad = document.fonts?.ready ?? Promise.resolve()
+
+    Promise.allSettled([pageLoad, fontsLoad]).then(() => {
+      if (!cancelled) setDocumentReady(true)
+    })
+
+    const safetyTimer = window.setTimeout(() => setBootFallback(true), 6000)
+    return () => {
+      cancelled = true
+      removeLoadListener()
+      window.clearTimeout(safetyTimer)
+    }
+  }, [])
 
   useEffect(() => {
     const revealObserver = new IntersectionObserver((entries) => {
@@ -132,14 +215,20 @@ function App() {
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = deckOpen ? 'hidden' : ''
+    document.body.style.overflow = deckOpen || bootVisible ? 'hidden' : ''
     return () => {
       document.body.style.overflow = ''
     }
-  }, [deckOpen])
+  }, [bootVisible, deckOpen])
 
   return (
     <div className={overdrive ? 'site overdrive' : 'site'}>
+      {bootVisible && (
+        <BootScreen
+          complete={bootFallback || (documentReady && sceneReady)}
+          onGone={dismissBoot}
+        />
+      )}
       <Cursor />
       <ScrollProgress />
       <div className="grain" aria-hidden="true" />
@@ -173,7 +262,7 @@ function App() {
           <div className="seed-wrap">
             <div className="seed-halo" />
             <Suspense fallback={<div className="discovery-shape suspense-shape"><div className="shape-fallback" /></div>}>
-              <DiscoveryShape />
+              <DiscoveryShape onReady={markSceneReady} />
             </Suspense>
           </div>
 

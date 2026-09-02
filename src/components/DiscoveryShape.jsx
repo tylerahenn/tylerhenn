@@ -61,7 +61,7 @@ const fragmentShader = `
   }
 `
 
-export default function DiscoveryShape() {
+export default function DiscoveryShape({ onReady }) {
   const mountRef = useRef(null)
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function DiscoveryShape() {
       renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
     } catch {
       mount.classList.add('webgl-fallback')
+      onReady?.()
       return undefined
     }
 
@@ -176,6 +177,7 @@ export default function DiscoveryShape() {
     mount.addEventListener('pointerleave', leave)
     resize()
     render()
+    onReady?.()
 
     return () => {
       cancelAnimationFrame(frame)
@@ -193,7 +195,7 @@ export default function DiscoveryShape() {
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [])
+  }, [onReady])
 
   return (
     <div ref={mountRef} className="discovery-shape">
