@@ -1,5 +1,6 @@
 import '../src/styles.css'
 import { SITE_URL } from '../src/data/seo.js'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
       <body>
         <noscript><style>{'[data-reveal]{opacity:1!important;transform:none!important}[data-boot-screen]{display:none!important}'}</style></noscript>
         {children}
+        <Analytics />
       </body>
     </html>
   )
